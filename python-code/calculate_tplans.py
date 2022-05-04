@@ -11,21 +11,7 @@ plt.style.use("dark_background")
 
 
 def calculate_tplans(imgs):
-    """
-        Params:
-        ------------------
-        data_path: location to the folder that contains the .tiff images
-        imgs_a: list of file names for pictures of type A
-        imgs_b: list of file names for pictures of type B
-        random_section: if you want to take random sections of input images
-        n_random_section: size of the random section in number of pixels
-        save: if you want to save the results, defaults to True
-        output_path: where to save the results
-        -------------------
-        Returns:
-        -------------------
-        a list with transport plans
-    """
+
     # reading images
     img_a = tifffile.imread(imgs)[0]
     img_b = tifffile.imread(imgs)[1]
@@ -67,16 +53,16 @@ def calculate_tplans(imgs):
     # Generate binary mask
     img_a_binary = img_binary_mask(img_a)
     img_b_binary = img_binary_mask(img_b)
-    # Closing
-    bw_a = closing(img_a_binary, square(3))
-    bw_b = closing(img_b_binary, square(3))
-    # remove artifacts connected to image border
-    bw_a_cleared = clear_border(bw_a)
-    bw_b_cleared = clear_border(bw_b)
+    # # Closing
+    # bw_a = closing(img_a_binary, square(3))
+    # bw_b = closing(img_b_binary, square(3))
+    # # remove artifacts connected to image border
+    # bw_a_cleared = clear_border(bw_a)
+    # bw_b_cleared = clear_border(bw_b)
 
     # Extract regions from the binary masks
-    img_b_clusters, nd_components_b = clusterize(bw_b_cleared)
-    img_a_clusters, nd_components_a = clusterize(bw_a_cleared)
+    img_b_clusters, nd_components_b = clusterize(img_b_binary)
+    img_a_clusters, nd_components_a = clusterize(img_a_binary)
     img_a_rprops = regionprops(img_a_clusters)
     img_b_rprops = regionprops(img_b_clusters)
 
@@ -116,7 +102,7 @@ def calculate_tplans(imgs):
     axs[1].imshow(img_b_clusters > 0, cmap="gray")
     plt.tight_layout()
     fig.savefig('synprot_channels.png', bbox_inches='tight')
-    fig.clf()
+    plt.close()
 
     # Compute transport plan
     start = time.time()
@@ -138,5 +124,5 @@ def calculate_tplans(imgs):
     axs[1].set_ylabel('Bassoon')
     plt.tight_layout()
     fig.savefig('synprot_transport_plan.png', bbox_inches='tight')
-    plt.close(fig)
+    plt.close()
     return transport_plan, cost_matrix
