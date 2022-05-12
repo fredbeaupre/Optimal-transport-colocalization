@@ -1,8 +1,8 @@
-import os 
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from soda_tplans import soda_tplans
-from utils import normalize_mass, compute_OTC
+from utils import normalize_mass, compute_OTC, compute_OTC_v2
 from tqdm import tqdm
 
 """
@@ -13,6 +13,8 @@ from tqdm import tqdm
 BLOCK_DIR = "../../dataset_creator/theresa-dataset/DATA_SYNPROT_BLOCKGLUGLY/Block"
 GLUGLY_DIR = "../../dataset_creator/theresa-dataset/DATA_SYNPROT_BLOCKGLUGLY/GluGLY"
 
+BassoonFusPLKO = './jmdata_ot/composite/bassoon_fus/plko'
+BassoonFus318 = './jmdata_ot/composite/bassoon_fus/318'
 
 
 def main():
@@ -23,10 +25,11 @@ def main():
     gg_avg = None
     gg_std = None
     gg_dist = None
-    for dir_idx, direc in enumerate([BLOCK_DIR, GLUGLY_DIR]):
-        tiff_files = os.listdir(direc)
+    for dir_idx, direc in enumerate([BassoonFusPLKO, BassoonFus318]):
+        tiff_files = [fname for fname in os.listdir(
+            direc) if fname.endswith('.tif')]
         tiff_files = [os.path.join(direc, p) for p in tiff_files]
-        N = 1000
+        N = 1500
         num_files = len(tiff_files)
         ot_curve = np.zeros((num_files, N))
         for i in range(num_files):
@@ -34,7 +37,8 @@ def main():
             transport_plan, cost_matrix = soda_tplans(imgs=tiff_files[i])
             otc_values = []
             for dist in tqdm(common_dist):
-                transported_mass = compute_OTC(transport_plan, cost_matrix, dist)
+                transported_mass = compute_OTC_v2(
+                    transport_plan, cost_matrix, dist)
                 otc_values.append(transported_mass)
             otc_values = np.array(otc_values)
             ot_curve[i] = otc_values
@@ -49,20 +53,21 @@ def main():
 
     fig = plt.figure()
     plt.plot(common_dist, block_avg,
-             color='lightblue', label='Block')
+             color='lightblue', label='PLKO')
     plt.fill_between(common_dist, block_avg - block_std,
-                     block_avg+block_std, facecolor='lightblue', alpha=0.5)
-    plt.plot(common_dist, gg_avg, color='lightcoral', label='GluGly')
+                     block_avg + block_std, facecolor='lightblue', alpha=0.5)
+    plt.plot(common_dist, gg_avg, color='lightcoral', label='shFus318')
     plt.fill_between(common_dist, gg_avg - gg_std,
                      gg_avg + gg_std, facecolor='lightcoral', alpha=0.5)
     plt.xlabel('Distance', fontsize=16)
     plt.xticks(rotation=-30)
     plt.ylabel('OTC', fontsize=16)
     plt.legend()
-    plt.title('Bassoon - PSD95 OTC', fontsize=18)
+    plt.title('Bassoon - FUS OTC', fontsize=18)
     plt.xticks(fontsize=14)
     plt.yticks(fontsize=14)
-    fig.savefig('bassoon_psd95_OTC_soda.png')
+    fig.savefig('bassoon_fus_OTC_soda.png')
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     main()

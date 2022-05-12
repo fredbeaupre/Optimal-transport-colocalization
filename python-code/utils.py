@@ -65,3 +65,8 @@ def compute_OTC(transport_plan, cost_matrix, dist):
             if transport_plan[i][j] != 0 and cost_matrix[i][j] <= dist:
                 transported_mass += transport_plan[i][j]
     return transported_mass
+
+
+def compute_OTC_v2(transport_plan, cost_matrix, dist):
+    gt_dist = cost_matrix <= dist
+    return np.sum(transport_plan[gt_dist == True])
