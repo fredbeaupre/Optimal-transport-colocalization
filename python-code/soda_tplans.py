@@ -119,6 +119,9 @@ def find_ROI(image, sigma=10, threshold=1.0, channel_mask=False):
 
 
 def get_soda_mask(img):
+    """
+    Use pySODA to get the regions of interest as a binary mask
+    """
     spots_img = DetectionWavelets(
         img, params['scale_list'][0], params['scale_threshold'][0]).computeDetection()
     filtered_spots = filter_spots(spots_img)
@@ -133,8 +136,9 @@ def get_soda_mask(img):
 def soda_tplans(imgs, img_size=1000):
     print(imgs)
     img_a = tifffile.imread(imgs)[0]  # Bassoon
-    img_b = tifffile.imread(imgs)[1]  # PSD95
+    img_b = tifffile.imread(imgs)[1]  # PSD95 or FUS
 
+    # Binary masks, clusterized into ROIs
     soda_a, labels_a, props_a, components_a = get_soda_mask(img_a)
     soda_b, labels_b, props_b, components_b = get_soda_mask(img_b)
 
@@ -142,6 +146,7 @@ def soda_tplans(imgs, img_size=1000):
     img_a_prod = np.zeros((components_a,))
     img_b_pos = np.zeros((components_b, 2))
     img_b_prod = np.zeros((components_b,))
+    # Compute mass to be transported in each image, looping through its region props
     for i, r in enumerate(props_a):
         img_a_pos[i][0] = r.centroid[0]
         img_a_pos[i][1] = r.centroid[1]
@@ -158,7 +163,7 @@ def soda_tplans(imgs, img_size=1000):
         mass = np.mean(roi)
         img_b_prod[i] = mass
 
-    # Normalize the mass arrays
+    # Normalize the mass to be transported so that it sums up to 1 in each image
     img_a_prod = img_a_prod / img_a_prod.sum()
     img_b_prod = img_b_prod / img_b_prod.sum()
 
@@ -168,7 +173,7 @@ def soda_tplans(imgs, img_size=1000):
     axs[0].imshow(labels_a > 0, cmap='gray')
     axs[1].imshow(labels_b > 0, cmap="gray")
     plt.tight_layout()
-    fig.savefig('synprot_channels_bassoon_fus_jmichel.png',
+    fig.savefig('./figures/synprot_channels_bassoon_fus_jmichel.png',
                 bbox_inches='tight')
     plt.close()
 
@@ -195,7 +200,7 @@ def soda_tplans(imgs, img_size=1000):
     # axs[1].set_yticklabels(axs[1].get_yticklabels(), fontsize=12)
     # axs[1].set_xticklabels(axs[1].get_xticklabels(), fontsize=12)
     plt.tight_layout()
-    fig.savefig('synprot_transport_plan_bassoon_fus_jmichel.png',
+    fig.savefig('./figures/synprot_transport_plan_bassoon_fus_jmichel.png',
                 bbox_inches='tight')
     plt.close()
     return transport_plan, cost_matrix
