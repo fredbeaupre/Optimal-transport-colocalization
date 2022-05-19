@@ -168,7 +168,8 @@ def soda_tplans(imgs, img_size=1000):
     axs[0].imshow(labels_a > 0, cmap='gray')
     axs[1].imshow(labels_b > 0, cmap="gray")
     plt.tight_layout()
-    fig.savefig('synprot_channels_bassoon_fus.png', bbox_inches='tight')
+    fig.savefig('synprot_channels_bassoon_fus_jmichel.png',
+                bbox_inches='tight')
     plt.close()
 
     # Compute transport plan
@@ -178,18 +179,23 @@ def soda_tplans(imgs, img_size=1000):
     time_emd = time.time() - start
     print("Compute time for transport plan: {}".format(time_emd))
 
-    fig, axs = plt.subplots(1, 2)
+    fig, axs = plt.subplots(1, 2, figsize=(10, 10))
     im1 = axs[0].imshow(cost_matrix, cmap='coolwarm')
     cbar = plt.colorbar(im1, ax=axs[0], shrink=0.3)
     cbar.ax.set_xlabel('cost')
-    axs[0].set_xlabel('FUS')
-    axs[0].set_ylabel('Bassoon')
+    axs[0].set_xlabel('FUS', fontsize=14)
+    axs[0].set_ylabel('Bassoon', fontsize=14)
+    # axs[0].set_yticklabels(axs[0].get_yticklabels(), fontsize=12)
+    # axs[0].set_xticklabels(axs[0].get_xticklabels(), fontsize=12)
     im2 = axs[1].imshow(transport_plan, cmap='coolwarm')
     cbar = plt.colorbar(im2, ax=axs[1], shrink=0.3)
     cbar.ax.set_xlabel('transport plan')
-    axs[1].set_xlabel('FUS')
-    axs[1].set_ylabel('Bassoon')
+    axs[1].set_xlabel('FUS', fontsize=14)
+    axs[1].set_ylabel('Bassoon', fontsize=14)
+    # axs[1].set_yticklabels(axs[1].get_yticklabels(), fontsize=12)
+    # axs[1].set_xticklabels(axs[1].get_xticklabels(), fontsize=12)
     plt.tight_layout()
-    fig.savefig('synprot_transport_plan_bassoon_fus.png', bbox_inches='tight')
+    fig.savefig('synprot_transport_plan_bassoon_fus_jmichel.png',
+                bbox_inches='tight')
     plt.close()
     return transport_plan, cost_matrix
