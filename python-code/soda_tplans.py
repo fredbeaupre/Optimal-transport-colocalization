@@ -11,6 +11,7 @@ import os
 import numpy as np
 import time
 import sys
+from split_crops import img_to_crops
 sys.path.insert(1, '../pySODA')
 from wavelet_SODA import DetectionWavelets
 from steps_SODA import SodaImageAnalysis
@@ -133,8 +134,8 @@ def get_soda_mask(img):
     return out_image, out_lab, out_props, num
 
 
-def soda_tplans(imgs, img_size=1000):
-    print(imgs)
+def soda_tplans(imgs):
+
     img_a = tifffile.imread(imgs)[0]  # Bassoon
     img_b = tifffile.imread(imgs)[1]  # PSD95 or FUS
 
@@ -173,7 +174,7 @@ def soda_tplans(imgs, img_size=1000):
     axs[0].imshow(labels_a > 0, cmap='gray')
     axs[1].imshow(labels_b > 0, cmap="gray")
     plt.tight_layout()
-    fig.savefig('./figures/synprot_channels_bassoon_fus_jmichel.png',
+    fig.savefig('./figures/CaMKII_Actin_FLAVIE/synprot_channels_camkii_actin.png',
                 bbox_inches='tight')
     plt.close()
 
@@ -200,7 +201,7 @@ def soda_tplans(imgs, img_size=1000):
     # axs[1].set_yticklabels(axs[1].get_yticklabels(), fontsize=12)
     # axs[1].set_xticklabels(axs[1].get_xticklabels(), fontsize=12)
     plt.tight_layout()
-    fig.savefig('./figures/synprot_transport_plan_bassoon_fus_jmichel.png',
+    fig.savefig('./figures/CaMKII_Actin_FLAVIE/synprot_transport_plan_camkii_actin.png',
                 bbox_inches='tight')
     plt.close()
     return transport_plan, cost_matrix
