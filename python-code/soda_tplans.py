@@ -15,6 +15,7 @@ from split_crops import img_to_crops
 sys.path.insert(1, '../pySODA')
 from wavelet_SODA import DetectionWavelets
 from steps_SODA import SodaImageAnalysis
+import cupy as cp
 plt.style.use('dark_background')
 
 # For ROI mask generation
@@ -132,6 +133,41 @@ def get_soda_mask(img):
     out_lab, num = label(out_image, connectivity=1, return_num=True)
     out_props = regionprops(out_lab)
     return out_image, out_lab, out_props, num
+
+def tplans_pixel_by_pixel(imgs):
+    # img_a = tifffile.imread(imgs)[0] # Bassoon
+    # img_b = tifffile.imread(imgs)[1] # PSD-95 or FUS
+    img_a, img_b = imgs[0], imgs[1]
+
+    assert img_a.shape == img_b.shape
+    img_a_pos = cp.zeros((img_a.shape[0] * img_a.shape[1], 2))
+    img_a_prod = cp.zeros((img_a.shape[0] * img_a.shape[1], ))
+    img_b_prod = cp.zeros((img_b.shape[0] * img_b.shape[1], ))
+
+    # Initializing positions and masses
+    index = 0
+    for i in range(img_a.shape[0]):
+        for j in range(img_a.shape[1]):
+            img_a_pos[index][0] = i
+            img_a_pos[index][1] = j
+            img_a_prod[index] = img_a[i, j]
+            img_b_prod[index] = img_b[i, j]
+            index += 1
+    img_b_pos = img_a_pos
+
+    # Normalize mass to be transported so that it sums to 1 in both images
+    img_a_prod = img_a_prod / img_a_prod.sum()
+    img_b_prod = img_b_prod / img_b_prod.sum()
+    
+    # Cost matrix
+    cost_matrix = ot.dist(img_a_pos, img_b_pos, metric='euclidean')
+    # Transport plan
+    transport_plan = ot.emd(img_a_prod, img_b_prod, cost_matrix, 500000)
+    return transport_plan, cost_matrix
+
+
+
+
 
 
 def soda_tplans(imgs):

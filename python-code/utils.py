@@ -2,6 +2,8 @@ import numpy as np
 from scipy.ndimage import measurements
 from skimage.filters import threshold_otsu
 import random
+import tifffile
+import cupy as cp
 
 
 def remove_small_regions(rprops):
@@ -66,6 +68,38 @@ def compute_OTC(transport_plan, cost_matrix, dist):
     return transported_mass
 
 
-def compute_OTC_v2(transport_plan, cost_matrix, dist):
+def compute_transported_mass(transport_plan, cost_matrix, dist):
     gt_dist = cost_matrix <= dist
     return np.sum(transport_plan[gt_dist == True])
+
+def img_to_crops(img, size=128):
+    """
+    Takes a large image and extracts multiple (can be overlapping) crops.
+
+    Returns:
+    ------------
+    List of extracted crops
+    """
+    img_a = tifffile.imread(img)[0]  # Bassoon / VGLUT1 / CaMKII
+    img_b = tifffile.imread(img)[1]  # PSD-95 / Actin
+    x, y = img_a.shape
+    assert x == img_b.shape[0]
+    assert y == img_b.shape[1]
+    start_xs = cp.arange(0, x - size, size)
+    start_xs = [int(cp.floor(x)) for x in start_xs]
+    start_ys = cp.arange(0, y - size, size)
+    start_ys = [int(cp.floor(y)) for y in start_ys]
+    crops_a = []
+    crops_b = []
+    img_a_mean = cp.mean(img_a)
+    img_b_mean = cp.mean(img_b)
+    for s_x in start_xs:
+        for s_y in start_ys:
+            crop_a = img_a[s_x:s_x + size, s_y:s_y + size]
+            crop_b = img_b[s_x:s_x + size, s_y:s_y + size]
+            crop_a_mean = cp.mean(crop_a)
+            crop_b_mean = cp.mean(crop_b)
+            if (crop_a_mean >= img_a_mean) and (crop_b_mean >= img_b_mean):
+                crops_a.append(crop_a)
+                crops_b.append(crop_b)
+    return crops_a, crops_b
