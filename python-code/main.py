@@ -9,14 +9,18 @@ from tqdm import tqdm
 import scipy.stats
 
 """
-    N.B) For all images in the directories listed below:
-        channel 0 --> Bassoon
-        channel 1 --> PSD95
+ BassoonFUS: Bassoon in channel 0, FUS in channel 1
+ BassoonPSD: Bassoon in channel 0, PSD95 in channel 1
+ ActinCaMKII: 
+
 """
 BassoonFUS_PLKO = './jmdata_ot/composite/bassoon_fus/plko'
 BassoonFUS_318 = './jmdata_ot/composite/bassoon_fus/318'
 BassoonPSD_PLKO = './jmdata_ot/composite/bassoon_psd/plko'
 BassoonPSD_318 = './jmdata_ot/composite/bassoon_psd/318'
+
+DATASET = './path/to/dataset'
+OUTPUT = './results/<figure-name>'
 
 
 def compute_confidence_interval(averages, stds):
@@ -31,7 +35,7 @@ def compute_confidence_interval(averages, stds):
 
     Returns:
     ---------
-    95% confidence interval values
+    95% confidence interval values (lower and upper bounds)
     """
     dof = averages.shape[0] - 1
     confidence = 0.95
@@ -161,7 +165,7 @@ def main():
     plt.title('Bassoon - FUS', fontsize=18)
     plt.xticks(fontsize=14)
     plt.yticks(fontsize=14)
-    fig.savefig('./results/BassoonFUS_confidence95_transparent_with_baselines.pdf',
+    fig.savefig(OUTPUT,
                 transparent=True)
 
 
