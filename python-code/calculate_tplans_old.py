@@ -7,7 +7,6 @@ from skimage.morphology import closing, square
 from skimage.segmentation import clear_border
 from utils import *
 import time
-plt.style.use("dark_background")
 
 
 def calculate_tplans(imgs):
@@ -16,8 +15,8 @@ def calculate_tplans(imgs):
     img_a = tifffile.imread(imgs)[0]
     img_b = tifffile.imread(imgs)[1]
     # denoising
-    img_a = img_a * (img_a > np.percentile(img_a, 100*0.05))
-    img_b = img_b * (img_b > np.percentile(img_b, 100*0.05))
+    img_a = img_a * (img_a > np.percentile(img_a, 100 * 0.05))
+    img_b = img_b * (img_b > np.percentile(img_b, 100 * 0.05))
     # normalizing
     img_a_og = img_a / img_a.sum()
     img_b_og = img_b / img_b.sum()

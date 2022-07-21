@@ -8,4 +8,5 @@ python-code/figures
 python-code/EXP9-GFP-compositeSTED-4-couleurs
 python-code/convert_msr_to_tiff_composite.py
 python-code/convertmsr_bioformats.py
+python-code/testing.py
 pySODA

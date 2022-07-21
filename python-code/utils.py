@@ -23,8 +23,8 @@ def random_crop(img_a, img_b, new_w, new_h):
     width = img_a.shape[1]
     x = random.randint(0, width - new_w)
     y = random.randint(0, height - new_h)
-    new_a = img_a[y:y+new_h, x:x+new_w]
-    new_b = img_b[y:y+new_h, x:x+new_w]
+    new_a = img_a[y:y + new_h, x:x + new_w]
+    new_b = img_b[y:y + new_h, x:x + new_w]
     return new_a, new_b
 
 
@@ -58,6 +58,9 @@ def normalize_mass(transport_plan):
 
 
 def compute_OTC(transport_plan, cost_matrix, dist):
+    """
+    This function does the same thing as `compute_transported_mass` below but in a much slower way
+    """
     assert transport_plan.shape == cost_matrix.shape
     transported_mass = 0
     row, col = transport_plan.shape[0], transport_plan.shape[1]
@@ -69,10 +72,110 @@ def compute_OTC(transport_plan, cost_matrix, dist):
 
 
 def compute_transported_mass(transport_plan, cost_matrix, dist):
+    """
+    Computes the amount of transported mass that can be transported for a given maximum distance of transport
+
+    Params:
+    --------
+    transport plan (WxH matrix): optimal transport plan between two distributions
+    cost matrix (WxH matrix): cost matrix of the cost matrix between each pair of elements in the two distributions
+    dist (int): maximum distance in pixels allowed for a transport
+
+    Returns:
+    ---------
+    Fraction of the total mass transported
+    """
     gt_dist = cost_matrix <= dist
     return np.sum(transport_plan[gt_dist == True])
 
-def img_to_crops(img, size=128):
+
+def random_distributions(size=128):
+    """
+    Creates two images both with random spatial distributions
+
+    Params:
+    --------
+    size (int): size of the images
+    """
+    img_a = np.zeros((size, size))
+    img_b = np.zeros((size, size))
+    num_regions_a = np.random.randint(5, 20)
+    num_regions_b = np.random.randint(5, 20)
+    for _ in range(num_regions_a):
+        x_size = np.random.randint(2, 20)
+        y_size = np.random.randint(2, 20)
+        x = np.random.randint(0, size - x_size)
+        y = np.random.randint(0, size - y_size)
+        for i in range(x, x + x_size):
+            for j in range(y, y + y_size):
+                img_a[i, j] = np.random.uniform()
+    for _ in range(num_regions_b):
+        x_size = np.random.randint(5, 30)
+        y_size = np.random.randint(5, 30)
+        x = np.random.randint(0, size - x_size)
+        y = np.random.randint(0, size - y_size)
+        for i in range(x, x + x_size):
+            for j in range(y, y + y_size):
+                img_b[i, j] = np.random.uniform()
+    return img_a, img_b
+
+
+def highly_colocalized_distributions(size=128):
+    """
+    Builds two images which have high colocalization in their structures
+
+    Params:
+    --------
+    size (int): size of the images
+    """
+    img_a = np.zeros((size, size))
+    img_b = np.zeros(img_a.shape)
+    num_regions = np.random.randint(5, 20)
+    for _ in range(num_regions):
+        x_size_a, y_size_a = np.random.randint(2, 20), np.random.randint(2, 20)
+        x_size_b, y_size_b = np.random.randint(2, 20), np.random.randint(2, 20)
+        distance_x = int(np.random.normal(0, 5))
+        distance_y = int(np.random.normal(0, 5))
+        x_a = np.random.randint(0 + x_size_a + distance_x,
+                                size - x_size_a - distance_x)
+        y_a = np.random.randint(0 + y_size_a + distance_y,
+                                size - y_size_a - distance_y)
+        x_b = x_a + distance_x
+        y_b = y_a + distance_y
+        for i in range(x_a, x_a + x_size_a):
+            for j in range(y_a, y_a + y_size_a):
+                img_a[i, j] = np.random.uniform()
+        for i in range(x_b, x_b + x_size_b):
+            for j in range(y_b, y_b + y_size_b):
+                img_b[i, j] = np.random.uniform()
+    return img_a, img_b
+
+
+def build_colocalized_dataset():
+    """
+    Builds a dataset of crops in which the regions are highly colocalized
+    """
+    crops_a, crops_b = [], []
+    for i in range(400):
+        img_a, img_b = highly_colocalized_distributions()
+        crops_a.append(img_a)
+        crops_b.append(img_b)
+    return crops_a, crops_b
+
+
+def build_random_dist_dataset():
+    """
+    Builds a dataset of crops in which the regions follow a random spatial distribution
+    """
+    crops_a, crops_b = [], []
+    for i in range(400):
+        img_a, img_b = random_distributions()
+        crops_a.append(img_a)
+        crops_b.append(img_b)
+    return crops_a, crops_b
+
+
+def img_to_crops(img, size=128, step=96):
     """
     Takes a large image and extracts multiple (can be overlapping) crops.
 
@@ -85,9 +188,9 @@ def img_to_crops(img, size=128):
     x, y = img_a.shape
     assert x == img_b.shape[0]
     assert y == img_b.shape[1]
-    start_xs = cp.arange(0, x - size, size)
+    start_xs = cp.arange(0, x - size, step)
     start_xs = [int(cp.floor(x)) for x in start_xs]
-    start_ys = cp.arange(0, y - size, size)
+    start_ys = cp.arange(0, y - size, step)
     start_ys = [int(cp.floor(y)) for y in start_ys]
     crops_a = []
     crops_b = []
