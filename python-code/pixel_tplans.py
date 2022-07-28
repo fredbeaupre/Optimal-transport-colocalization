@@ -1,10 +1,11 @@
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 import utils
 import ot
 import tifffile
-import numpy as np 
+import numpy as np
 import time
-import cupy as cp  
+import cupy as cp
+
 
 def calculate_tplans(imgs, crops=True):
     """
@@ -22,11 +23,8 @@ def calculate_tplans(imgs, crops=True):
     """
     img_a, img_b = imgs[0], imgs[1]
     # Denoising
-    img_a = img_a * (img_a > np.percentile(img_a, 100*0.05))
-    img_b = img_b * (img_b > np.percentile(img_b, 100*0.05))
-    # Normalizing
-    img_a_og = img_a / img_a.sum()
-    img_b_og = img_b / img_b.sum()
+    img_a = img_a * (img_a > np.percentile(img_a, 15))
+    img_b = img_b * (img_b > np.percentile(img_b, 15))
 
     assert img_a.shape == img_b.shape
     img_a_pos = cp.zeros((img_a.shape[0] * img_a.shape[1], 2))
@@ -37,18 +35,25 @@ def calculate_tplans(imgs, crops=True):
     index = 0
     for i in range(img_a.shape[0]):
         for j in range(img_a.shape[1]):
-            img_a_pos[index][0] = i 
+            img_a_pos[index][0] = i
             img_a_pos[index][1] = j
             img_a_prod[index] = img_a[i, j]
             img_b_prod[index] = img_b[i, j]
             index += 1
-    img_b_pos = img_a_pos # Coordinates of the masses to be transported are the same because imgs have save shape and we're transporting all pixels
+    img_b_pos = img_a_pos  # Coordinates of the masses to be transported are the same because imgs have save shape and we're transporting all pixels
 
     # Normalize mass so that it sums to 1 in both images
     img_a_prod = img_a_prod / img_a_prod.sum()
     img_b_prod = img_b_prod / img_b_prod.sum()
     # Cost matrix
-    cost_matrix = ot.dist(img_a_pos, img_b_pos, metric='euclidean') # default metric is squared euclidean
+    # default metric is squared euclidean
+    cost_matrix = ot.dist(img_a_pos, img_b_pos, metric='euclidean')
+
+    # this will ignore transports over 500nm (25 pixels * 20nm (pixel size))
+    # binary_cost_matrix = cost_matrix <= 25
+    # cost_matrix = np.multiply(cost_matrix, binary_cost_matrix)
     # Transport plan
-    transport_plan = ot.emd(img_a_prod, img_b_prod, cost_matrix, numItermax=500000) # OT pixel-by-pixel is more accurate but requires many more iterations to converge
+    # OT pixel-by-pixel is more accurate but requires many more iterations to converge
+    transport_plan = ot.emd(img_a_prod, img_b_prod,
+                            cost_matrix, numItermax=500000)
     return transport_plan, cost_matrix

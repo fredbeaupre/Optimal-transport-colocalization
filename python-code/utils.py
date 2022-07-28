@@ -4,6 +4,7 @@ from skimage.filters import threshold_otsu
 import random
 import tifffile
 import cupy as cp
+from scipy.stats import pearsonr
 
 
 def remove_small_regions(rprops):
@@ -102,16 +103,16 @@ def random_distributions(size=128):
     num_regions_a = np.random.randint(5, 20)
     num_regions_b = np.random.randint(5, 20)
     for _ in range(num_regions_a):
-        x_size = np.random.randint(2, 20)
-        y_size = np.random.randint(2, 20)
+        x_size = np.random.randint(2, 10)
+        y_size = np.random.randint(2, 10)
         x = np.random.randint(0, size - x_size)
         y = np.random.randint(0, size - y_size)
         for i in range(x, x + x_size):
             for j in range(y, y + y_size):
                 img_a[i, j] = np.random.uniform()
     for _ in range(num_regions_b):
-        x_size = np.random.randint(5, 30)
-        y_size = np.random.randint(5, 30)
+        x_size = np.random.randint(2, 10)
+        y_size = np.random.randint(2, 10)
         x = np.random.randint(0, size - x_size)
         y = np.random.randint(0, size - y_size)
         for i in range(x, x + x_size):
@@ -132,23 +133,19 @@ def highly_colocalized_distributions(size=128):
     img_b = np.zeros(img_a.shape)
     num_regions = np.random.randint(5, 20)
     for _ in range(num_regions):
-        x_size_a, y_size_a = np.random.randint(2, 20), np.random.randint(2, 20)
-        x_size_b, y_size_b = np.random.randint(2, 20), np.random.randint(2, 20)
-        distance_x = int(np.random.normal(0, 5))
-        distance_y = int(np.random.normal(0, 5))
-        x_a = np.random.randint(0 + x_size_a + distance_x,
-                                size - x_size_a - distance_x)
-        y_a = np.random.randint(0 + y_size_a + distance_y,
-                                size - y_size_a - distance_y)
-        x_b = x_a + distance_x
-        y_b = y_a + distance_y
-        for i in range(x_a, x_a + x_size_a):
-            for j in range(y_a, y_a + y_size_a):
-                img_a[i, j] = np.random.uniform()
-        for i in range(x_b, x_b + x_size_b):
-            for j in range(y_b, y_b + y_size_b):
-                img_b[i, j] = np.random.uniform()
-    return img_a, img_b
+        r_size = np.random.randint(2, 20)
+        x_a = np.random.randint(0, size - 2 * r_size)
+        y_a = np.random.randint(0, size - 2 * r_size)
+        x_b = int(np.floor(np.random.normal(loc=x_a, scale=2.0)))
+        y_b = int(np.floor(np.random.normal(loc=y_a, scale=2.0)))
+        for i in range(x_a, x_a + r_size):
+            for j in range(y_a, y_a + r_size):
+                img_a[i, j] = random.random()
+        for i in range(x_b, x_b + r_size):
+            for j in range(y_b, y_b + r_size):
+                img_b[i, j] = random.random()
+    pearson, _ = pearsonr(img_a.flatten(), img_b.flatten())
+    return img_a, img_b, pearson
 
 
 def build_colocalized_dataset():
@@ -156,11 +153,14 @@ def build_colocalized_dataset():
     Builds a dataset of crops in which the regions are highly colocalized
     """
     crops_a, crops_b = [], []
+    pearson_coeffs = []
     for i in range(400):
-        img_a, img_b = highly_colocalized_distributions()
+        img_a, img_b, pearson = highly_colocalized_distributions()
+        pearson_coeffs.append(pearson)
         crops_a.append(img_a)
         crops_b.append(img_b)
-    return crops_a, crops_b
+
+    return crops_a, crops_b, np.array(pearson_coeffs)
 
 
 def build_random_dist_dataset():

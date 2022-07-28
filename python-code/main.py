@@ -7,11 +7,12 @@ import utils
 import cupy as cp
 from tqdm import tqdm
 import scipy.stats
+plt.style.use('dark_background')
 
 """
  BassoonFUS: Bassoon in channel 0, FUS in channel 1
  BassoonPSD: Bassoon in channel 0, PSD95 in channel 1
- ActinCaMKII: 
+ ActinCaMKII: CamKII in channel 0, Actin in channel 1
 
 """
 BassoonFUS_PLKO = './jmdata_ot/composite/bassoon_fus/plko'
@@ -19,8 +20,31 @@ BassoonFUS_318 = './jmdata_ot/composite/bassoon_fus/318'
 BassoonPSD_PLKO = './jmdata_ot/composite/bassoon_psd/plko'
 BassoonPSD_318 = './jmdata_ot/composite/bassoon_psd/318'
 
+GFP = "../../../projects/ul-val-prj-def-fllac4/julia_Actin_CaMKII/12-GFP"
+NT = "../../../projects/ul-val-prj-def-fllac4/julia_Actin_CaMKII/12-Non_Transfected"
+RESCUE = "../../../projects/ul-val-prj-def-fllac4/julia_Actin_CaMKII/12-rescue"
+shRNA_BCaMKII = "../../../projects/ul-val-prj-def-fllac4/julia_Actin_CaMKII/12-shRNA-BCamKII"
+shRNA_RESCUE = "../../../projects/ul-val-prj-def-fllac4/julia_Actin_CaMKII/12-shRNA_rescue"
+
+ACTIN_CAMKII = [GFP, NT, RESCUE, shRNA_BCaMKII, shRNA_RESCUE]
+
+bichette_labels = ['GFP', 'NT', 'Rescue',
+                   'shRNA-BCaMKII', 'Random', 'Colocalized']
+colors = ['limegreen', 'gainsboro', 'lightblue',
+          'lightcoral', 'mediumorchid', 'yellow']
+
 DATASET = './path/to/dataset'
-OUTPUT = './results/<figure-name>'
+FIG_OUTPUT = './results/data_bichette/Actin_CAMKII_random_coloc'
+BASELINE_OUTPUT = './results/BassoonFUS/BassoonFUS_random_simulated'
+OUTPUT_PATH = './results/data_bichette'
+
+REDIRECTORIES = ['./results/data_bichette/12-GFP.npz',
+                 './results/data_bichette/12-Non_Transfected.npz',
+                 './results/data_bichette/12-rescue.npz',
+                 './results/data_bichette/12-shRNA-BCamKII.npz',
+                 './results/random.npz',
+                 './results/colocalized.npz'
+                 ]
 
 
 def compute_confidence_interval(averages, stds):
@@ -82,7 +106,7 @@ def compute_OTC(crops, max_dist=30):
     Returns:
     ----------
     otc_avg (array): Optimal transport curve average over the number of crops
-    otc_std (array): Standard deviations of the OTC at each distance considered 
+    otc_std (array): Standard deviations of the OTC at each distance considered
     """
     distances = cp.arange(0, 20, 1)
     (crops_a, crops_b) = crops
@@ -104,69 +128,125 @@ def compute_OTC(crops, max_dist=30):
     return otc_avg, otc_std, confidence, distances
 
 
-def main():
-    # Extract crops
-    crops = extract_crops(BassoonFUS_PLKO)
-    # Compute OTC for all crops
-    otc_avg, otc_std, confidence, distances = compute_OTC(crops)
-    otc_avg, otc_std, confidence, distances = cp.asnumpy(otc_avg), cp.asnumpy(
-        otc_std), cp.asnumpy(confidence), cp.asnumpy(distances)
-
-    crops_inf = extract_crops(BassoonFUS_318)
-    otc_inf_avg, otc_inf_std, confidence_inf, _ = compute_OTC(crops_inf)
-    otc_inf_avg, otc_inf_std, confidence_inf = cp.asnumpy(
-        otc_inf_avg), cp.asnumpy(otc_inf_std), cp.asnumpy(confidence_inf)
-
-    crops_random = utils.build_random_dist_dataset()
-    otc_random_avg, otc_random_std, confidence_random, _ = compute_OTC(
-        crops_random)
-    otc_random_avg, otc_random_std, confidence_random = cp.asnumpy(
-        otc_random_avg), cp.asnumpy(otc_random_std), cp.asnumpy(confidence_random)
-
-    crops_loc = utils.build_colocalized_dataset()
-    otc_loc_avg, otc_loc_std, confidence_loc, _ = compute_OTC(crops_loc)
-    otc_loc_avg, otc_loc_std, confidence_loc = cp.asnumpy(
-        otc_loc_avg), cp.asnumpy(otc_loc_std), cp.asnumpy(confidence_loc)
-
-    # Plot the results
+def loop_through_dirs(directories=ACTIN_CAMKII):
     xtick_locs = [1, 5, 10, 15, 20]
     xtick_labels = [str(item * 20) for item in xtick_locs]
-    np.savez('./results/BassoonFUS/plko', otc=otc_avg,
-             distances=distances, confidence=confidence)
-    np.savez('./results/BassoonFUS/shfus', otc=otc_inf_avg,
-             distances=distances, confidence=confidence_inf)
-    np.savez('./results/BassoonFUS/random', otc=otc_random_avg,
-             distances=distances, confidence=confidence_random)
-    np.savez('./results/BassoonFUS/random', otc=otc_loc_avg,
-             distances=distances, confidence=confidence_loc)
     fig = plt.figure()
-    # PLKO
-    plt.plot(distances, otc_avg, color='lightblue', label='PLKO')
-    plt.fill_between(distances, otc_avg - confidence, otc_avg +
-                     confidence, facecolor='lightblue', alpha=0.5)
-    # Disease
-    plt.plot(distances, otc_inf_avg, color='lightcoral', label='shFUS-318')
-    plt.fill_between(distances, otc_inf_avg - confidence_inf,
-                     otc_inf_avg + confidence_inf, facecolor='lightcoral', alpha=0.5)
-    # Random
-    plt.plot(distances, otc_random_avg, color='limegreen', label='Random')
-    plt.fill_between(distances, otc_random_avg - confidence_random,
-                     otc_random_avg + confidence_random, facecolor='limegreen', alpha=0.5)
-
-    # Higly colocalized
-    plt.plot(distances, otc_loc_avg, color='mediumorchid',
-             label='Highly colocalized')
-    plt.fill_between(distances, otc_loc_avg - confidence_loc,
-                     otc_loc_avg + confidence_loc, facecolor='mediumorchid', alpha=0.5)
+    for i, direc in enumerate(directories):
+        crops = extract_crops(direc)
+        cond = "{}_thresholded".format(direc.split('/')[-1])
+        otc_avg, otc_std, confidence, distances = compute_OTC(crops)
+        otc_avg, otc_std, confidence, distances = cp.asnumpy(otc_avg), cp.asnumpy(
+            otc_std), cp.asnumpy(confidence), cp.asnumpy(distances)
+        np.savez('./{}/{}'.format(OUTPUT_PATH, cond), otc=otc_avg,
+                 distances=distances, confidence=confidence)
+        plt.plot(distances, otc_avg, color=colors[i],
+                 label='{}'.format(bichette_labels[i]))
+        plt.fill_between(distances, otc_avg - confidence, otc_avg +
+                         confidence, facecolor=colors[i], alpha=0.5)
     plt.xlabel('Distance (nm)', fontsize=14)
     plt.xticks(ticks=xtick_locs, labels=xtick_labels)
     plt.ylabel('OTC', fontsize=14)
-    plt.legend()
-    plt.title('Bassoon - FUS', fontsize=18)
+    plt.title('Actin - CaMKII', fontsize=18)
     plt.xticks(fontsize=14)
     plt.yticks(fontsize=14)
-    fig.savefig(OUTPUT,
-                transparent=True)
+    plt.legend()
+    fig.savefig(f'{FIG_OUTPUT}_thresholded.pdf')
+
+
+def reloop(directories=REDIRECTORIES):
+    xtick_locs = [1, 5, 10, 15, 20]
+    xtick_labels = [str(item * 20) for item in xtick_locs]
+    fig = plt.figure()
+    for i, direc in enumerate(directories):
+        print("plotting curve {} of {}".format(i + 1, len(REDIRECTORIES)))
+        cond = bichette_labels[i]
+        otc_avg = np.load(direc)['otc']
+        distances = np.load(direc)['distances']
+        confidence = np.load(direc)['confidence']
+        # np.savez('./{}/{}'.format(OUTPUT_PATH, cond), otc=otc_avg,
+        #          distances=distances, confidence=confidence)
+        plt.plot(distances, otc_avg, color=colors[i],
+                 label='{}'.format(bichette_labels[i]))
+        plt.fill_between(distances, otc_avg - confidence, otc_avg +
+                         confidence, facecolor=colors[i], alpha=0.5)
+    plt.xlabel('Distance (nm)', fontsize=14)
+    plt.xticks(ticks=xtick_locs, labels=xtick_labels)
+    plt.ylabel('OTC', fontsize=14)
+    plt.title('Actin - CaMKII', fontsize=18)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.legend()
+    fig.savefig(f'{FIG_OUTPUT}.pdf')
+    fig.savefig(f'{FIG_OUTPUT}.png')
+
+
+def main():
+    reloop()
+    # loop_through_dirs()
+    # Extract crops
+
+    # crops = extract_crops(BassoonFUS_PLKO)
+    # # Compute OTC for all crops
+    # otc_avg, otc_std, confidence, distances = compute_OTC(crops)
+    # otc_avg, otc_std, confidence, distances = cp.asnumpy(otc_avg), cp.asnumpy(
+    #     otc_std), cp.asnumpy(confidence), cp.asnumpy(distances)
+
+    # crops_inf = extract_crops(BassoonFUS_318)
+    # otc_inf_avg, otc_inf_std, confidence_inf, _ = compute_OTC(crops_inf)
+    # otc_inf_avg, otc_inf_std, confidence_inf = cp.asnumpy(
+    #     otc_inf_avg), cp.asnumpy(otc_inf_std), cp.asnumpy(confidence_inf)
+    # print("Building random dataset")
+    # crops_random = utils.build_random_dist_dataset()
+    # otc_random_avg, otc_random_std, confidence_random, distances = compute_OTC(
+    #     crops_random)
+    # otc_random_avg, otc_random_std, confidence_random = cp.asnumpy(
+    #     otc_random_avg), cp.asnumpy(otc_random_std), cp.asnumpy(confidence_random)
+    # np.savez('./results/random', otc=otc_random_avg,
+    #          distances=distances, confidence=confidence_random)
+
+    # print("Building colocalized dataset")
+    # crops_loc_a, crops_loc_b, crops_pearson = utils.build_colocalized_dataset()
+    # mean_pearson = np.mean(crops_pearson)
+    # crops_loc = (crops_loc_a, crops_loc_b)
+    # otc_loc_avg, otc_loc_std, confidence_loc, distances = compute_OTC(
+    #     crops_loc)
+    # otc_loc_avg, otc_loc_std, confidence_loc, distances = cp.asnumpy(
+    #     otc_loc_avg), cp.asnumpy(otc_loc_std), cp.asnumpy(confidence_loc), cp.asnumpy(distances)
+    # np.savez('./results/colocalized', otc=otc_loc_avg,
+    #          distances=distances, confidence=confidence_loc, pearson=mean_pearson)
+
+    # # Plot the results
+    # xtick_locs = [1, 5, 10, 15, 20]
+    # xtick_labels = [str(item * 20) for item in xtick_locs]
+    # np.savez('./results/BassoonFUS/plko', otc=otc_avg,
+    #          distances=distances, confidence=confidence)
+    # np.savez('./results/BassoonFUS/shfus', otc=otc_inf_avg,
+    #          distances=distances, confidence=confidence_inf)
+    # np.savez('./results/BassoonFUS/random', otc=otc_random_avg,
+    #          distances=distances, confidence=confidence_random)
+    # fig = plt.figure()
+    # # PLKO
+    # plt.plot(distances, otc_avg, color='lightblue', label='PLKO')
+    # plt.fill_between(distances, otc_avg - confidence, otc_avg +
+    #                  confidence, facecolor='lightblue', alpha=0.5)
+    # # Disease
+    # plt.plot(distances, otc_inf_avg, color='lightcoral', label='shFUS-318')
+    # plt.fill_between(distances, otc_inf_avg - confidence_inf,
+    #                  otc_inf_avg + confidence_inf, facecolor='lightcoral', alpha=0.5)
+    # # Random
+    # plt.plot(distances, otc_random_avg, color='limegreen', label='Random')
+    # plt.fill_between(distances, otc_random_avg - confidence_random,
+    #                  otc_random_avg + confidence_random, facecolor='limegreen', alpha=0.5)
+
+    # plt.xlabel('Distance (nm)', fontsize=14)
+    # plt.xticks(ticks=xtick_locs, labels=xtick_labels)
+    # plt.ylabel('OTC', fontsize=14)
+    # plt.legend()
+    # plt.title('Bassoon - FUS', fontsize=18)
+    # plt.xticks(fontsize=14)
+    # plt.yticks(fontsize=14)
+    # fig.savefig(f"{BASELINE_OUTPUT}.pdf", transparent=True)
 
 
 if __name__ == "__main__":
